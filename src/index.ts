@@ -1,4 +1,4 @@
-import express, { Request } from "express";
+import express, { NextFunction, Request } from "express";
 import passport from "passport";
 import session from "express-session";
 import { BearerStrategy, IBearerStrategyOptionWithRequest, IOIDCStrategyOptionWithoutRequest, IOIDCStrategyOptionWithRequest, IProfile, OIDCStrategy, VerifyCallback } from "passport-azure-ad";
@@ -9,6 +9,10 @@ import bodyParser from "body-parser";
 import debug from "debug";
 import jwtDecode from "jwt-decode"
 import fileUpload from "express-fileupload";
+import flash from "express-flash";
+import * as msal from "@azure/msal-node";
+import auth from "./auth";
+import importSkills from "./skills";
 
 config();
 
@@ -39,7 +43,7 @@ passport.deserializeUser((user: Express.User | false | null, done) => {
 
 const strategy = new OIDCStrategy(
     options,
-    (req: Request, iss: string, sub: string, profile: IProfile, access_token: string, refresh_token: string, done: VerifyCallback) => {
+    (_req: Request, _iss: string, _sub: string, profile: IProfile, access_token: string, _refresh_token: string, done: VerifyCallback) => {
         log("Verify");
         const decoded: any = jwtDecode(access_token);
         done(null, { ...profile, given_name: decoded.given_name, family_name: decoded.family_name, name: decoded.name, upn: decoded.upn }, access_token)
@@ -56,65 +60,90 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 app.set("view engine", "ejs");
 app.use(fileUpload());
-
-// initialize passport
 app.use(session({ secret: process.env.SESSION_SECRET as string, resave: true, saveUninitialized: true }));
-app.use(passport.initialize());
-app.use(passport.session());
+app.use(flash());
+
+// set up auth
+app.locals.users = {};
+// MSAL config
+const msalConfig = {
+    auth: {
+        clientId: process.env.CLIENT_ID as string,
+        authority: process.env.AUTHORITY as string,
+        clientSecret: process.env.CLIENT_SECRET as string
+    },
+    system: {
+        loggerOptions: {
+            loggerCallback(_loglevel: any, message: any, _containsPii: any) {
+                debug("app:msal")(message);
+            },
+            piiLoggingEnabled: false,
+            logLevel: msal.LogLevel.Error
+        }
+    }
+};
+
+
+// Create msal application object
+app.locals.msalClient = new msal.ConfidentialClientApplication(msalConfig);
+// // initialize passport
+// 
+// app.use(passport.initialize());
+// app.use(passport.session());
+
 
 
 // Set up routes
 app.get("/", (req, res) => {
-    res.render("home", { user: req.user });
+    log(req.session.userId || "No user");
+    const user = req.session.userId ? req.app.locals.users[req.session.userId] : undefined;
+    log(user);
+    res.render("home", { user });
 });
 
-app.get('/login',
-    passport.authenticate("azuread-openidconnect", { failureRedirect: '/' }),
-    (_req, res) => {
-        log("Login was called");
-        res.redirect('/');
-    });
+app.use('/auth', auth);
 
-app.post("/_signin",
-    passport.authenticate("azuread-openidconnect", {}),
-    (req, res) => {
+// app.get('/login',
+//     passport.authenticate("azuread-openidconnect", { failureRedirect: '/' }),
+//     (_req, res) => {
+//         log("Login was called");
+//         res.redirect('/');
+//     });
 
-        if (req.body.error) {
-            log("Error: " + req.body.error_description);
-        } else {
-            log(req.body)
-        }
-        log("Sign in");
-        res.redirect('/');
-    });
+// app.post("/_signin",
+//     passport.authenticate("azuread-openidconnect", {}),
+//     (req, res) => {
 
-app.get('/logout', function (req, res) {
-    req.logout();
-    res.redirect('/');
-});
+//         if (req.body.error) {
+//             log("Error: " + req.body.error_description);
+//         } else {
+//             log(req.body)
+//         }
+//         log("Sign in");
+//         res.redirect('/');
+//     });
 
-const importSkills = async (data: string) => {
-    return new Promise<void>((resolve, reject) => {
-        data.split("\n").forEach(line => {
-            const [name, skill, proficiency, collaborationTags, allowedAudiences] = line.split(";");
-            console.log(`${name} knows ${skill}`);
-        });
-    });
+// app.get('/logout', function (req, res) {
+//     req.logout();
+//     res.redirect('/');
+// });
+
+
+const checkSignedIn = (req: any, res: any, next: NextFunction) => {
+    const user = req.session.userId ? req.app.locals.users[req.session.userId] : undefined;
+    if (user) return next();
+    else return res.status(401).send("Not signed in");
 }
-
 app.post("/upload",
-    (req, res, next) => {
-        if (req.user) return next();
-        else return res.status(401).send("Not signed in");
-    },
-    (req, res) => {
+    checkSignedIn,
+    async (req, res) => {
         if (!req.files) {
             return res.status(400).send("No files were uploaded.");
         }
         const file = req.files.file as fileUpload.UploadedFile;
         const data = file.data.toString("utf8");
         log(data);
-        importSkills(data);
+        await importSkills(data, req.app.locals.msalClient, req.session.userId as string);
         res.redirect("/");
     });
 

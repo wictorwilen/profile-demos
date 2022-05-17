@@ -9,15 +9,15 @@
   <h1>Microsoft Profile Skills synchronizer</h1>
 
   <% if (!user) { %>
-    <p>Welcome! Please <a href="/login">log in</a>.</p>
+    <p>Welcome! Please <a href="/auth/login">log in</a>.</p>
     <% } else { %>
-      <p>Hello <%= user.name %>, you're signed in!</p>
+      <p>Hello <%= user.displayName %>, you're signed in!</p>
       <h3>Upload Skills CSV</h3>
       <form method="POST" action="/upload" enctype="multipart/form-data">
         <input type="file" name="file" />
         <input type="submit" value="Upload" />
       </form>
-      <p><a href="/logout">Log out</a>.</p>
+      <p><a href="/auth/logout">Log out</a>.</p>
       <% } %>
 </body>
 
