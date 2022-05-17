@@ -5,8 +5,8 @@ import { getAuthenticatedClient } from "./graph";
 const log = debug("app:skills");
 
 const importSkills = async (data: string, msalClient: msal.ConfidentialClientApplication, homeAccountId: string) => {
-    const client = getAuthenticatedClient(msalClient, homeAccountId);
-
+    
+    const client = getAuthenticatedClient(msalClient, homeAccountId, true); // use app permissions
 
     const lines = data.split("\n");
 
@@ -20,7 +20,7 @@ const importSkills = async (data: string, msalClient: msal.ConfidentialClientApp
                 const request = client
                     .api(`/users/${upn.trim()}/profile/skills`)
                     .version("beta")
-                    .filter(`displayName eq '${skill.trim()}'`); // add: source/type/any(s:s eq 'UPA')
+                    .filter(`displayName eq '${skill.trim()}' and source/type/any(s:s ne 'UPA')`); // remove all UPA properties
                 const currentSkills = await request.get();
 
                 const body = {

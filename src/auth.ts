@@ -3,14 +3,7 @@ import * as graph from "./graph";
 
 const router = PromiseRouter();
 
-// add the userId to the express session object
-declare module 'express-session' {
-    interface SessionData {
-        userId: string;
-    }
-}
-
-
+// login rout
 router.get("/login", async (req, res) => {
     const urlParameters = {
         scopes: (process.env.SCOPES as string).split(','),
@@ -28,8 +21,9 @@ router.get("/login", async (req, res) => {
     }
 });
 
+// callback route
 router.get('/callback',
-    async function (req, res) {
+    async (req, res) => {
         const tokenRequest = {
             code: req.query.code,
             scopes: (process.env.SCOPES as string).split(','),
@@ -66,18 +60,16 @@ router.get('/callback',
     }
 );
 
+// logout route
 router.get('/logout',
-    async function (req, res) {
-        // Sign out
-        if ((req.session as any).userId) {
-            // Look up the user's account in the cache
+    async (req, res) => {
+        if (req.session.userId) {
             const accounts = await req.app.locals.msalClient
                 .getTokenCache()
                 .getAllAccounts();
 
-            const userAccount = accounts.find((a: { homeAccountId: any; }) => a.homeAccountId === (req.session as any).userId);
+            const userAccount = accounts.find((a: { homeAccountId: any; }) => a.homeAccountId === req.session.userId);
 
-            // Remove the account
             if (userAccount) {
                 req.app.locals.msalClient
                     .getTokenCache()
@@ -85,8 +77,7 @@ router.get('/logout',
             }
         }
 
-        // Destroy the user's session
-        req.session.destroy(function (err) {
+        req.session.destroy((err) => {
             res.redirect('/');
         });
     }

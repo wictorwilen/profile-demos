@@ -2,6 +2,7 @@ import * as msal from "@azure/msal-node";
 import * as graph from "@microsoft/microsoft-graph-client";
 import debug from "debug";
 require('isomorphic-fetch');
+
 const log = debug("app:graph");
 
 const getUserDetails = async (msalClient: msal.ConfidentialClientApplication, homeAccountId: string, userId: string) => {
@@ -14,12 +15,7 @@ const getUserDetails = async (msalClient: msal.ConfidentialClientApplication, ho
     return user;
 }
 
-
-function getAuthenticatedClient(msalClient: msal.ConfidentialClientApplication, userId: string) {
-    if (!msalClient || !userId) {
-        throw new Error(
-            `Invalid MSAL state. Client: ${msalClient ? 'present' : 'missing'}, User ID: ${userId ? 'present' : 'missing'}`);
-    }
+const getAuthenticatedClient = (msalClient: msal.ConfidentialClientApplication, userId: string, application: boolean = false) => {
 
     // Initialize Graph client
     const client = graph.Client.init({
@@ -27,26 +23,38 @@ function getAuthenticatedClient(msalClient: msal.ConfidentialClientApplication, 
         // from the app's MSAL instance
         authProvider: async (done) => {
             try {
-                // Get the user's account
+                // Get user info
                 const account = await msalClient
                     .getTokenCache()
                     .getAccountByHomeId(userId);
 
                 if (account) {
-                    // Attempt to get the token silently
-                    // This method uses the token cache and
-                    // refreshes expired tokens as needed
-                    const response = await msalClient.acquireTokenSilent({
-                        scopes: (process.env.SCOPES as string).split(','),
-                        account: account
-                    });
-                    if(response == null) {
-                        throw "No Response";
+
+                    if (application === false) {
+                        // Delegated permissions
+                        const response = await msalClient.acquireTokenSilent({
+                            scopes: (process.env.SCOPES as string).split(','),
+                            account: account
+                        });
+                        if (response == null) {
+                            throw "No Response";
+                        }
+
+                        // First param to callback is the error,
+                        // Set to null in success case
+                        done(null, response.accessToken);
+
+                    } else {
+                        // Application permissions
+                        const response = await msalClient.acquireTokenByClientCredential({
+                            scopes: ["https://graph.microsoft.com/.default"],
+                            authority: `https://login.microsoftonline.com/${account.tenantId}/`
+                        });
+                        if (response == null) {
+                            throw "No Response";
+                        }
+                        done(null, response.accessToken);
                     }
- 
-                    // First param to callback is the error,
-                    // Set to null in success case
-                    done(null, response.accessToken);
                 }
             } catch (err) {
                 log(JSON.stringify(err, Object.getOwnPropertyNames(err)));
