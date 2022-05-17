@@ -19,7 +19,7 @@ const log = debug("app:server");
 
 // Set up express
 const app = express();
-app.use(morgan("combined"));
+app.use(morgan("tiny"));
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
