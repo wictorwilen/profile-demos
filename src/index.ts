@@ -7,7 +7,8 @@ import cookieParser from "cookie-parser";
 import { config } from "dotenv";
 import bodyParser from "body-parser";
 import debug from "debug";
-
+import jwtDecode from "jwt-decode"
+import fileUpload from "express-fileupload";
 
 config();
 
@@ -23,7 +24,7 @@ const options: IOIDCStrategyOptionWithRequest = {
     redirectUrl: process.env.REDIRECT_URL as string,
     passReqToCallback: true,
     allowHttpForRedirectUrl: true,
-    loggingLevel: "info",
+    loggingLevel: "error",
     issuer: "https://sts.windows.net/",
     validateIssuer: false
 }
@@ -40,7 +41,8 @@ const strategy = new OIDCStrategy(
     options,
     (req: Request, iss: string, sub: string, profile: IProfile, access_token: string, refresh_token: string, done: VerifyCallback) => {
         log("Verify");
-        done(null, profile, access_token)
+        const decoded: any = jwtDecode(access_token);
+        done(null, { ...profile, given_name: decoded.given_name, family_name: decoded.family_name, name: decoded.name, upn: decoded.upn }, access_token)
     });
 
 passport.use(strategy);
@@ -51,15 +53,17 @@ const app = express();
 app.use(morgan("combined"));
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(session({ secret: process.env.SESSION_SECRET as string, resave: true, saveUninitialized: true }));
+app.use(express.json());
+app.set("view engine", "ejs");
+app.use(fileUpload());
 
+// initialize passport
+app.use(session({ secret: process.env.SESSION_SECRET as string, resave: true, saveUninitialized: true }));
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.use(express.json());
 
-app.set("view engine", "ejs");
-
+// Set up routes
 app.get("/", (req, res) => {
     res.render("home", { user: req.user });
 });
@@ -83,6 +87,37 @@ app.post("/_signin",
         log("Sign in");
         res.redirect('/');
     });
+
+app.get('/logout', function (req, res) {
+    req.logout();
+    res.redirect('/');
+});
+
+const importSkills = async (data: string) => {
+    return new Promise<void>((resolve, reject) => {
+        data.split("\n").forEach(line => {
+            const [name, skill, proficiency, collaborationTags, allowedAudiences] = line.split(";");
+            console.log(`${name} knows ${skill}`);
+        });
+    });
+}
+
+app.post("/upload",
+    (req, res, next) => {
+        if (req.user) return next();
+        else return res.status(401).send("Not signed in");
+    },
+    (req, res) => {
+        if (!req.files) {
+            return res.status(400).send("No files were uploaded.");
+        }
+        const file = req.files.file as fileUpload.UploadedFile;
+        const data = file.data.toString("utf8");
+        log(data);
+        importSkills(data);
+        res.redirect("/");
+    });
+
 
 // run the app
 const port = process.env.PORT || 3210;
