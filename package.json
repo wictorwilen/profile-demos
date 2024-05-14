@@ -4,7 +4,7 @@
   "description": "",
   "main": "dist/index.js",
   "scripts": {
-    "start": "tsc-watch --onSuccess \"node dist/index.js\""
+    "start": "DEBUG=app:* tsc-watch --onSuccess \"node dist/index.js\""
   },
   "author": "",
   "license": "ISC",

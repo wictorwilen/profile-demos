@@ -27,8 +27,7 @@ const importSkills = async (data: string, msalClient: msal.ConfidentialClientApp
                     displayName: skill.trim(),
                     allowedAudiences: allowedAudiences.trim(),
                     collaborationTags: collaborationTags.trim().split(","),
-                    proficiency: proficiency.trim(), // generalProfessional does not work
-                    source: { type: ["Skillsync"] } // invalid syntax in documentation
+                    proficiency: proficiency.trim() // generalProfessional does not work
                 };
 
                 if (currentSkills.value.length > 0) {

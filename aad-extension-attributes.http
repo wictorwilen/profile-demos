@@ -1,0 +1,35 @@
+# https://aka.ms/devicelogin
+
+### Get extension attributes
+GET https://graph.microsoft.com/v1.0/users/bob@wictordev.onmicrosoft.com?$select=onPremisesExtensionAttributes
+Authorization: Bearer {{$aadV2Token scopes:User.ReadWrite.All tenantid:public wictordev.onmicrosoft.com}}
+
+### Update extension attribute
+PATCH https://graph.microsoft.com/v1.0/users/bob@wictordev.onmicrosoft.com
+Content-Type: application/json
+Authorization: Bearer {{$aadV2Token scopes:User.ReadWrite.All tenantid:public wictordev.onmicrosoft.com}}
+
+{
+    "onPremisesExtensionAttributes": {
+        "extensionAttribute1": "1337"
+    }
+}
+
+### Get LPC config
+GET https://graph.microsoft.com/beta/organization/dbb0bda5-c207-4515-bd5f-fb7bf7d85616/settings/profileCardProperties
+Authorization: Bearer {{$aadV2Token scopes:User.ReadWrite.All tenantid:public wictordev.onmicrosoft.com}}
+
+
+### Get Profile
+GET https://graph.microsoft.com/beta/users/bob@wictordev.onmicrosoft.com/profile/
+Authorization: Bearer {{$aadV2Token scopes:User.ReadWrite.All tenantid:public wictordev.onmicrosoft.com}}
+
+
+### Get Skills
+GET https://graph.microsoft.com/beta/users/bob@wictordev.onmicrosoft.com/profile/skills
+Authorization: Bearer {{$aadV2Token scopes:User.ReadWrite.All tenantid:public wictordev.onmicrosoft.com}}
+
+
+###
+GET https://graph.microsoft.com/beta/users/bob@wictordev.onmicrosoft.com/profile/skills?$select=displayName
+Authorization: Bearer {{$aadV2Token scopes:User.ReadWrite.All tenantid:public wictordev.onmicrosoft.com}}
