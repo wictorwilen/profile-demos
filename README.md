@@ -5,12 +5,16 @@ This is a (set of) demo(s) of how to use the profile, person and/or user entitie
 ## Current demos
 
 * Sample application on how to upload a CSV file with skills for users
+* Sample HTTP requests for AAD extension attributes
 
-## How to run
+## How to run the app
 
 1. Create a file called `.env` with the contents below
 2. Create an Entra ID App with the `User.ReadWrite` user scope and `User.ReadWrite.All` app scope
 3. Run the demo with `npm start`
+
+## How to run the http samples
+ Use the VSCode *REST Client* extension!
 
 ## `.env` file
 
