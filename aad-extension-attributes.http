@@ -11,7 +11,7 @@ Authorization: Bearer {{$aadV2Token scopes:User.ReadWrite.All tenantid:public wi
 
 {
     "onPremisesExtensionAttributes": {
-        "extensionAttribute1": "1337"
+        "extensionAttribute1": "1339"
     }
 }
 
